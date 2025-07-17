@@ -1,0 +1,5 @@
+#!/bin/sh
+
+chmod +x /etc/init.d/rxgro
+/etc/init.d/rxgro enable
+/etc/init.d/rxgro start
