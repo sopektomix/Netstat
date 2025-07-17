@@ -23,8 +23,8 @@ function parseStats(content) {
     var name = parts[0].trim();
     var values = parts[1].trim().split(/\s+/);
     stats[name] = {
-      rx: parseInt(values[0]),
-      tx: parseInt(values[8])
+      rx: parseInt(values[0]),  // RX bytes
+      tx: parseInt(values[8])   // TX bytes
     };
   });
   return stats;
@@ -85,11 +85,11 @@ return baseclass.extend({
     var s = data.netStats[wan_iface] || { rx: 0, tx: 0 };
     var p = prev[wan_iface] || { rx: s.rx, tx: s.tx };
 
-    var rx_total = s.rx;
-    var tx_total = s.tx;
-
-    var rx_rate = (s.rx - p.rx) / timeDiff;
-    var tx_rate = (s.tx - p.tx) / timeDiff;
+    // Fix: Download = TX, Upload = RX
+    var download_rate = (s.tx - p.tx) / timeDiff;
+    var upload_rate = (s.rx - p.rx) / timeDiff;
+    var total_download = s.tx;
+    var total_upload = s.rx;
 
     prev[wan_iface] = { rx: s.rx, tx: s.tx };
     last_time = now;
@@ -99,23 +99,23 @@ return baseclass.extend({
 
     var stats = [
       {
-        label: _('Download Speed'),
-        value: formatBits(rx_rate * 8) + '/s',
+        label: _('↓ Download Speed'),
+        value: formatBits(download_rate * 8) + '/s',
         icon: '/luci-static/resources/stats/download.svg'
       },
       {
-        label: _('Upload Speed'),
-        value: formatBits(tx_rate * 8) + '/s',
+        label: _('↑ Upload Speed'),
+        value: formatBits(upload_rate * 8) + '/s',
         icon: '/luci-static/resources/stats/upload.svg'
       },
       {
-        label: _('Total Download'),
-        value: formatBytes(rx_total),
+        label: _('↓ Total Download'),
+        value: formatBytes(total_download),
         icon: '/luci-static/resources/stats/download.svg'
       },
       {
-        label: _('Total Upload'),
-        value: formatBytes(tx_total),
+        label: _('↑ Total Upload'),
+        value: formatBytes(total_upload),
         icon: '/luci-static/resources/stats/upload.svg'
       }
     ];
