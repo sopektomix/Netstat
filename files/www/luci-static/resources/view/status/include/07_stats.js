@@ -209,7 +209,7 @@ return baseclass.extend({
     });
 
     var ipText = E('div', {
-      'style': 'font-size: 1.6em; font-weight: bold; color: #e07b00; z-index: 1;',
+      'style': 'font-weight: bold; color: #e07b00; z-index: 1;',
       'id': 'ip-value'
     }, ipVisible ? ipRaw : '••••••••');
 
