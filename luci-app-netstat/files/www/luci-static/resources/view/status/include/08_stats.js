@@ -23,8 +23,8 @@ function parseStats(content) {
     var name = parts[0].trim();
     var values = parts[1].trim().split(/\s+/);
     stats[name] = {
-      rx: parseInt(values[0]),  // RX bytes
-      tx: parseInt(values[8])   // TX bytes
+      rx: parseInt(values[0]),  // RX bytes (Download)
+      tx: parseInt(values[8])   // TX bytes (Upload)
     };
   });
   return stats;
@@ -85,11 +85,11 @@ return baseclass.extend({
     var s = data.netStats[wan_iface] || { rx: 0, tx: 0 };
     var p = prev[wan_iface] || { rx: s.rx, tx: s.tx };
 
-    // Fix: Download = TX, Upload = RX
-    var download_rate = (s.tx - p.tx) / timeDiff;
-    var upload_rate = (s.rx - p.rx) / timeDiff;
-    var total_download = s.tx;
-    var total_upload = s.rx;
+    // ✅ Correct: Download = RX, Upload = TX
+    var download_rate = (s.rx - p.rx) / timeDiff;
+    var upload_rate = (s.tx - p.tx) / timeDiff;
+    var total_download = s.rx;
+    var total_upload = s.tx;
 
     prev[wan_iface] = { rx: s.rx, tx: s.tx };
     last_time = now;
