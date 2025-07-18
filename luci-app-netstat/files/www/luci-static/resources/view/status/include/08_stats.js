@@ -145,7 +145,7 @@ return baseclass.extend({
       }
 
       .stats-card {
-        background-color: #e0eef8;
+        background-color: rgba(224, 238, 248, 0.7);
         border-radius: 5px;
         padding: 16px;
         display: flex;
@@ -159,7 +159,7 @@ return baseclass.extend({
       }
 
       .ip-card {
-        background-color: #fff8e0;
+        background-color: rgba(255, 248, 224, 0.7);
         border-radius: 5px;
         padding: 24px 16px;
         box-shadow: 0 2px 2px rgba(0,0,0,0.2);
@@ -181,7 +181,7 @@ return baseclass.extend({
           style: 'height: 28px; margin-bottom: 8px;'
         }),
         E('div', { 'style': 'margin-bottom: 4px;' }, stat.label),
-        E('div', { 'style': 'color: #007bff;' }, stat.value),
+        E('div', { 'style': 'color: #f44336;' }, stat.value),
         E('div', {
           'style': `
             position: absolute;
