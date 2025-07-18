@@ -23,8 +23,8 @@ function parseStats(content) {
     var name = parts[0].trim();
     var values = parts[1].trim().split(/\s+/);
     stats[name] = {
-      rx: parseInt(values[0]),  // RX bytes (Download)
-      tx: parseInt(values[8])   // TX bytes (Upload)
+      rx: parseInt(values[0]),  // RX Download
+      tx: parseInt(values[8])   // TX Upload
     };
   });
   return stats;
