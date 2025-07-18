@@ -11,7 +11,7 @@ var ipVisible = localStorage.getItem('ipVisible') !== 'false';
 var callNetIP = function () {
   return request.get('/cgi-bin/luci/admin/status/netip_status')
     .then(res => res.json())
-    .catch(() => ({ ip: 'N/A', org: 'N/A' }));
+    .catch(() => ({ ip: 'Unknown', org: 'Unknown' }));
 };
 
 function parseStats(content) {
@@ -94,8 +94,8 @@ return baseclass.extend({
     prev[wan_iface] = { rx: s.rx, tx: s.tx };
     last_time = now;
 
-    var org = (data.ipInfo.org || 'N/A').replace(/^AS\d+\s+/, '');
-    var ipRaw = data.ipInfo.ip || 'N/A';
+    var org = (data.ipInfo.org || 'Unknown').replace(/^AS\d+\s+/, '');
+    var ipRaw = data.ipInfo.ip || 'Unknown';
 
     var stats = [
       {
