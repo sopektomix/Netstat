@@ -170,16 +170,6 @@ return baseclass.extend({
         position: relative;
         overflow: hidden;
       }
-
-      body.darkmode .stats-card {
-        background-color: #2f2f2f !important;
-        color: #f2f2f2 !important;
-      }
-
-      body.darkmode .ip-card {
-        background-color: #3a3a3a !important;
-        color: #f2f2f2 !important;
-      }
     `);
 
     var container = E('div', { 'class': 'stats-grid' });
@@ -188,10 +178,10 @@ return baseclass.extend({
       var card = E('div', { 'class': 'stats-card' }, [
         E('img', {
           src: stat.icon,
-          style: 'height: 32px; margin-bottom: 8px;'
+          style: 'height: 28px; margin-bottom: 8px;'
         }),
-        E('div', { 'style': 'font-weight: bold; margin-bottom: 4px;' }, stat.label),
-        E('div', { 'style': 'font-size:1.2em; color: #007bff;' }, stat.value),
+        E('div', { 'style': 'margin-bottom: 4px;' }, stat.label),
+        E('div', { 'style': 'color: #007bff;' }, stat.value),
         E('div', {
           'style': `
             position: absolute;
@@ -209,7 +199,7 @@ return baseclass.extend({
     });
 
     var ipText = E('div', {
-      'style': 'font-weight: bold; color: #e07b00; z-index: 1;',
+      'style': 'color: #e07b00; z-index: 1;',
       'id': 'ip-value'
     }, ipVisible ? ipRaw : '••••••••');
 
