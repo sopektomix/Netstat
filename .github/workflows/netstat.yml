@@ -98,15 +98,8 @@ jobs:
         fi
         ls -l
 
-    - name: Create GitHub Release
-      uses: softprops/action-gh-release@v1
+    - name: Upload IPK as artifact
+      uses: actions/upload-artifact@v3
       with:
-        files: firmware/*
         name: ${{ env.FINAL_NAME }}
-        tag_name: v${{ github.event.inputs.firmware_version }}-${{ env.PLUGIN_NAME }}-${{ env.PLUGIN_VERSION }}
-        body: |
-          **Target:** ${{ github.event.inputs.target }}
-          **Firmware Version:** ${{ github.event.inputs.firmware_version }}
-          **Plugin Version:** ${{ env.PLUGIN_VERSION }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        path: firmware/*.ipk
