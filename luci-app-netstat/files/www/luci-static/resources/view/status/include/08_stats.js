@@ -8,6 +8,13 @@ var prev = {};
 var last_time = Date.now();
 var ipVisible = localStorage.getItem('ipVisible') !== 'false';
 
+(function loadNetstatCSS() {
+  var link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = '/luci-static/resources/netstat/netstat.css';
+  document.head.appendChild(link);
+})();
+
 var callNetIP = function () {
   return request.get('/cgi-bin/luci/admin/status/netip_status')
     .then(res => res.json())
@@ -23,8 +30,8 @@ function parseStats(content) {
     var name = parts[0].trim();
     var values = parts[1].trim().split(/\s+/);
     stats[name] = {
-      rx: parseInt(values[0]),  // RX Download
-      tx: parseInt(values[8])   // TX Upload
+      rx: parseInt(values[0]),
+      tx: parseInt(values[8])
     };
   });
   return stats;
@@ -85,7 +92,6 @@ return baseclass.extend({
     var s = data.netStats[wan_iface] || { rx: 0, tx: 0 };
     var p = prev[wan_iface] || { rx: s.rx, tx: s.tx };
 
-    // Download = RX, Upload = TX
     var download_rate = (s.rx - p.rx) / timeDiff;
     var upload_rate = (s.tx - p.tx) / timeDiff;
     var total_download = s.rx;
@@ -120,92 +126,29 @@ return baseclass.extend({
       }
     ];
 
-    var style = E('style', {}, `
-      @keyframes bubbleMove {
-        0%   { transform: translateY(0) scale(1); opacity: 0.5; }
-        50%  { transform: translateY(-10px) scale(1.1); opacity: 0.7; }
-        100% { transform: translateY(0) scale(1); opacity: 0.5; }
-      }
-
-      .stats-grid {
-        display: grid;
-        gap: 12px;
-        padding: 14px;
-        grid-template-columns: repeat(2, 1fr);
-      }
-
-      @media (min-width: 1024px) {
-        .stats-grid {
-          grid-template-columns: repeat(4, 1fr);
-        }
-      }
-
-      .full-width {
-        grid-column: 1 / -1;
-      }
-
-      .stats-card {
-        background-color: rgba(224, 238, 248, 0.7);
-        border-radius: 5px;
-        padding: 16px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-        position: relative;
-        overflow: hidden;
-        box-shadow: 0 2px 2px rgba(0,0,0,0.2);
-        color: #000;
-      }
-
-      .ip-card {
-        background-color: rgba(255, 248, 224, 0.7);
-        border-radius: 5px;
-        padding: 24px 16px;
-        box-shadow: 0 2px 2px rgba(0,0,0,0.2);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-        position: relative;
-        overflow: hidden;
-      }
-    `);
-
     var container = E('div', { 'class': 'stats-grid' });
 
     stats.forEach(stat => {
       var card = E('div', { 'class': 'stats-card' }, [
         E('img', {
           src: stat.icon,
-          style: 'height: 28px; margin-bottom: 8px;'
+          class: 'stat-icon'
         }),
-        E('div', { 'style': 'margin-bottom: 4px;' }, stat.label),
-        E('div', { 'style': 'color: #f44336;' }, stat.value),
-        E('div', {
-          'style': `
-            position: absolute;
-            bottom: -12px;
-            right: -12px;
-            width: 50px;
-            height: 50px;
-            background: rgba(0, 123, 255, 0.15);
-            border-radius: 50%;
-            animation: bubbleMove 4s infinite ease-in-out;
-          `
-        })
+        E('div', { 'class': 'stat-label' }, stat.label),
+        E('div', { 'class': 'stat-value' }, stat.value),
+        E('div', { 'class': 'bubble' })
       ]);
       container.appendChild(card);
     });
 
     var ipText = E('div', {
-      'style': 'color: #e07b00; z-index: 1;',
+      'class': 'ip-value',
       'id': 'ip-value'
     }, ipVisible ? ipRaw : '••••••••');
 
     var eyeIcon = E('img', {
       src: ipVisible ? '/luci-static/resources/stats/eye.svg' : '/luci-static/resources/stats/eye-off.svg',
-      style: 'cursor: pointer; margin-left: 8px; height: 20px;',
+      class: 'eye-icon',
       title: 'Show/Hide IP',
       id: 'eye-icon'
     });
@@ -217,26 +160,12 @@ return baseclass.extend({
       eyeIcon.src = ipVisible ? '/luci-static/resources/stats/eye.svg' : '/luci-static/resources/stats/eye-off.svg';
     });
 
-    var ipLine = E('div', {
-      'style': 'display: flex; align-items: center; justify-content: center;'
-    }, [ipText, eyeIcon]);
+    var ipLine = E('div', { 'class': 'ip-line' }, [ipText, eyeIcon]);
 
     var ipCard = E('div', { 'class': 'ip-card full-width' }, [
       ipLine,
-      E('div', { 'style': 'color: #666; z-index: 1;' }, org),
-      E('div', {
-        'style': `
-          position: absolute;
-          top: -10px;
-          left: -10px;
-          width: 80px;
-          height: 80px;
-          background: rgba(255, 200, 0, 0.15);
-          border-radius: 50%;
-          animation: bubbleMove 6s infinite ease-in-out;
-          z-index: 0;
-        `
-      })
+      E('div', { 'class': 'ip-org' }, org),
+      E('div', { 'class': 'bubble yellow' })
     ]);
 
     container.appendChild(ipCard);
@@ -251,6 +180,6 @@ return baseclass.extend({
       }.bind(this));
     }.bind(this), 1000);
 
-    return E('div', {}, [style, container]);
+    return E('div', {}, [container]);
   }
 });
