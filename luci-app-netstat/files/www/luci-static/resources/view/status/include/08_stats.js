@@ -85,7 +85,7 @@ return baseclass.extend({
     var s = data.netStats[wan_iface] || { rx: 0, tx: 0 };
     var p = prev[wan_iface] || { rx: s.rx, tx: s.tx };
 
-    // ✅ Correct: Download = RX, Upload = TX
+    // Download = RX, Upload = TX
     var download_rate = (s.rx - p.rx) / timeDiff;
     var upload_rate = (s.tx - p.tx) / timeDiff;
     var total_download = s.rx;
