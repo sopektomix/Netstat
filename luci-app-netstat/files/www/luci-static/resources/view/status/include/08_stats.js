@@ -30,8 +30,8 @@ function parseStats(content) {
     var name = parts[0].trim();
     var values = parts[1].trim().split(/\s+/);
     stats[name] = {
-      rx: parseInt(values[0]),
-      tx: parseInt(values[8])
+      rx: parseInt(values[0]) || 0,
+      tx: parseInt(values[8]) || 0
     };
   });
   return stats;
@@ -44,7 +44,7 @@ function getActiveWAN(stats) {
 
   for (var iface in stats) {
     if (ignore.includes(iface)) continue;
-    var total = stats[iface].rx + stats[iface].tx;
+    var total = (stats[iface].rx || 0) + (stats[iface].tx || 0);
     if (total > maxBytes) {
       maxBytes = total;
       active = iface;
@@ -89,7 +89,11 @@ return baseclass.extend({
     var timeDiff = (now - last_time) / 1000;
 
     var wan_iface = getActiveWAN(data.netStats) || 'wan';
+    console.log("Detected WAN Interface:", wan_iface);
+
     var s = data.netStats[wan_iface] || { rx: 0, tx: 0 };
+    s.rx = s.rx || 0;
+    s.tx = s.tx || 0;
     var p = prev[wan_iface] || { rx: s.rx, tx: s.tx };
 
     var download_rate = (s.rx - p.rx) / timeDiff;
@@ -130,12 +134,10 @@ return baseclass.extend({
 
     stats.forEach(stat => {
       var card = E('div', { 'class': 'stats-card' }, [
-        E('img', {
-          src: stat.icon,
-          class: 'stat-icon'
-        }),
+        E('img', { src: stat.icon, class: 'stat-icon' }),
         E('div', { 'class': 'stat-label' }, stat.label),
         E('div', { 'class': 'stat-value' }, stat.value),
+       E('div', { 'class': 'wan-text' }, wan_iface),
         E('div', { 'class': 'bubble' })
       ]);
       container.appendChild(card);
