@@ -10,18 +10,13 @@ let ipVisible = localStorage.getItem('ipVisible') !== 'false';
   function isDarkMode() {
     const bgColor = getComputedStyle(document.body).backgroundColor;
     if (!bgColor) return false;
-
     const rgb = bgColor.match(/\d+/g);
     if (!rgb) return false;
-
     const [r, g, b] = rgb.map(Number);
-    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-    return brightness < 100;
+    return (r * 299 + g * 587 + b * 114) / 1000 < 100;
   }
 
   const dark = isDarkMode();
-  console.log(dark ? 'Dark mode detected' : 'Light mode detected');
-
   const link = document.createElement('link');
   link.rel = 'stylesheet';
   link.href = dark ? '/luci-static/resources/netstat/netstat_dark.css' : '/luci-static/resources/netstat/netstat.css';
@@ -30,26 +25,24 @@ let ipVisible = localStorage.getItem('ipVisible') !== 'false';
 
 function getPublicIP() {
   return fs.exec('/usr/bin/curl', ['-sL', '--connect-timeout', '2', '--max-time', '3', 'https://ip.guide'])
-    .then(function(res) {
+    .then(res => {
       try {
         return JSON.parse(res.stdout);
-      } catch (e) {
+      } catch {
         return { ip: 'Unavailable', network: { autonomous_system: { name: 'Unknown' } } };
       }
     })
-    .catch(function() {
-      return { ip: 'Unavailable', network: { autonomous_system: { name: 'Unknown' } } };
-    });
+    .catch(() => ({ ip: 'Unavailable', network: { autonomous_system: { name: 'Unknown' } } }));
 }
 
 function parseStats(raw) {
-  var lines = raw.trim().split('\n');
-  var stats = {};
-  lines.forEach(function(line) {
-    var parts = line.trim().split(':');
+  const lines = raw.trim().split('\n');
+  const stats = {};
+  lines.forEach(line => {
+    const parts = line.trim().split(':');
     if (parts.length < 2) return;
-    var iface = parts[0].trim().replace(/_\d+$/, '');
-    var values = parts[1].trim().split(/\s+/);
+    const iface = parts[0].trim().replace(/_\d+$/, '');
+    const values = parts[1].trim().split(/\s+/);
     stats[iface] = {
       rx: parseInt(values[0]) || 0,
       tx: parseInt(values[8]) || 0
@@ -59,48 +52,38 @@ function parseStats(raw) {
 }
 
 function getBestWAN(stats) {
-  const blacklist = ['lo', 'br-lan', 'lan'];
-  const blacklistPatterns = [/^phy/, /^wlan/, /^ra/, /^lan$/, /^lan[1-4]$/, /^vpn/, /^wg/, /^tun/, /^wl/, /^apcli/, /^sta/, /^eth\d+_\d+$/];
+  if (stats['wwan0']) return 'wwan0';
 
-  let max = 0, selected = null;
-
-  for (let iface in stats) {
-    if (blacklist.includes(iface)) continue;
-    if (blacklistPatterns.some(rx => rx.test(iface))) continue;
-
-    const total = stats[iface].rx + stats[iface].tx;
-    if (total > max) {
-      max = total;
-      selected = iface;
-    }
+  for (const iface in stats) {
+    if (/^wwan/.test(iface)) return iface;
   }
-  return selected;
+
+  const prefer = ['pppoe-wan', 'lte0', 'usb0', 'eth1', 'wan', 'tun0', 'wg0', 'utun0'];
+  for (const name of prefer) {
+    if (stats[name]) return name;
+  }
+
+  return Object.keys(stats)[0] || 'lo';
 }
 
 function formatRate(bits) {
-  var units = ['Bps', 'Kbps', 'Mbps', 'Gbps'];
-  var i = 0;
+  const units = ['Bps', 'Kbps', 'Mbps', 'Gbps'];
+  let i = 0;
   while (bits >= 1000 && i < units.length - 1) {
     bits /= 1000;
     i++;
   }
-  return {
-    number: bits.toFixed(1),
-    unit: units[i] + '/s'
-  };
+  return { number: bits.toFixed(1), unit: units[i] + '/s' };
 }
 
 function formatSize(bytes) {
-  var units = ['B', 'KB', 'MB', 'GB'];
-  var i = 0;
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let i = 0;
   while (bytes >= 1024 && i < units.length - 1) {
     bytes /= 1024;
     i++;
   }
-  return {
-    number: bytes.toFixed(1),
-    unit: units[i]
-  };
+  return { number: bytes.toFixed(1), unit: units[i] };
 }
 
 return baseclass.extend({
@@ -110,108 +93,81 @@ return baseclass.extend({
     return Promise.all([
       fs.read_direct('/proc/net/dev').then(parseStats).catch(() => ({})),
       getPublicIP()
-    ]).then(function(results) {
-      return { netStats: results[0], ipData: results[1] };
-    });
+    ]).then(([netStats, ipData]) => ({ netStats, ipData }));
   },
 
   render: function (data) {
-    var now = Date.now();
-    var dt = (now - last_time) / 1000;
+    const now = Date.now();
+    const dt = (now - last_time) / 1000;
 
-    var iface = getBestWAN(data.netStats) || 'wan';
-    var curr = data.netStats[iface] || { rx: 0, tx: 0 };
-    var prevStat = prev[iface] || curr;
+    const iface = getBestWAN(data.netStats);
+    const curr = data.netStats[iface] || { rx: 0, tx: 0 };
+    const prevStat = prev[iface] || curr;
 
-    var rxSpeed = (curr.rx - prevStat.rx) / dt;
-    var txSpeed = (curr.tx - prevStat.tx) / dt;
+    const rxSpeed = (curr.rx - prevStat.rx) / dt;
+    const txSpeed = (curr.tx - prevStat.tx) / dt;
 
     prev[iface] = curr;
     last_time = now;
 
-    var org = 'Unknown';
-    if (data.ipData?.network?.autonomous_system?.name)
-      org = data.ipData.network.autonomous_system.name.replace(/^AS\d+\s*/, '');
+    const rxRate = formatRate(rxSpeed * 8);
+    const txRate = formatRate(txSpeed * 8);
+    const rxTotal = formatSize(curr.rx);
+    const txTotal = formatSize(curr.tx);
 
-    var ip = data.ipData?.ip || 'Unavailable';
+    const org = data.ipData?.network?.autonomous_system?.name?.replace(/^AS\d+\s*/, '') || 'Unknown';
+    const ip = data.ipData?.ip || 'Unavailable';
 
-    var rxRate = formatRate(rxSpeed * 8);
-    var txRate = formatRate(txSpeed * 8);
-    var rxTotal = formatSize(curr.rx);
-    var txTotal = formatSize(curr.tx);
-
-    const colors = ['#4CAF50', '#2196F3', '#FF9800', '#9C27B0'];
-
-    var stats = [
-      {
-        label: _('Download'),
-        valueNum: rxRate.number,
-        valueUnit: rxRate.unit,
-        color: colors[0]
-      },
-      {
-        label: _('Upload'),
-        valueNum: txRate.number,
-        valueUnit: txRate.unit,
-        color: colors[1]
-      },
-      {
-        label: _('Total RX'),
-        valueNum: rxTotal.number,
-        valueUnit: rxTotal.unit,
-        color: colors[2]
-      },
-      {
-        label: _('Total TX'),
-        valueNum: txTotal.number,
-        valueUnit: txTotal.unit,
-        color: colors[3]
-      }
+    const stats = [
+      { label: _('Download'), valueNum: rxRate.number, valueUnit: rxRate.unit, color: '#4CAF50' },
+      { label: _('Upload'), valueNum: txRate.number, valueUnit: txRate.unit, color: '#2196F3' },
+      { label: _('Total RX'), valueNum: rxTotal.number, valueUnit: rxTotal.unit, color: '#FF9800' },
+      { label: _('Total TX'), valueNum: txTotal.number, valueUnit: txTotal.unit, color: '#9C27B0' }
     ];
 
-    var grid = E('div', { 'class': 'stats-grid' });
+    const grid = E('div', { class: 'stats-grid' });
 
-    stats.forEach(function(stat) {
-      grid.appendChild(E('div', { 'class': 'stats-card' }, [
-        E('div', { 'class': 'stat-label' }, stat.label),
-        E('div', { 'class': 'stat-value' }, [
-          E('span', { 'class': 'stat-number' }, stat.valueNum),
+    stats.forEach(stat => {
+      grid.appendChild(E('div', { class: 'stats-card', style: 'box-shadow: none; border: 1px solid #999;' }, [
+        E('div', { class: 'stat-label' }, stat.label),
+        E('div', { class: 'stat-value' }, [
+          E('span', { class: 'stat-number' }, stat.valueNum),
           E('br'),
-          E('span', { 'class': 'stat-unit' }, stat.valueUnit)
+          E('span', { class: 'stat-unit' }, stat.valueUnit)
         ]),
         E('span', {
-          'class': 'iface-badge',
-          'style': `margin-top: 6px; display: inline-block; padding: 2px 6px; font-size: 10px; border-radius: 4px; background-color: ${stat.color}; color: white;`
+          class: 'iface-badge',
+          style: `margin-top: 6px; display: inline-block; padding: 2px 6px; font-size: 10px; border-radius: 4px; background-color: ${stat.color}; color: white;`
         }, iface)
       ]));
     });
 
-    var ipVal = E('div', { 'class': 'ip-value', id: 'ip-value' }, ipVisible ? ip : '**********');
-    var eye = E('img', {
+    const ipVal = E('div', { class: 'ip-value', id: 'ip-value' }, ipVisible ? ip : '**********');
+    const eye = E('img', {
       src: ipVisible ? '/luci-static/resources/netstat/eye-outline.svg' : '/luci-static/resources/netstat/eye-off-outline.svg',
-      'class': 'eye-icon',
+      class: 'eye-icon',
       title: _('Show/Hide IP')
     });
 
-    eye.addEventListener('click', function() {
+    eye.addEventListener('click', function () {
       ipVisible = !ipVisible;
       localStorage.setItem('ipVisible', ipVisible);
       ipVal.textContent = ipVisible ? ip : '**********';
       eye.src = ipVisible ? '/luci-static/resources/netstat/eye-outline.svg' : '/luci-static/resources/netstat/eye-off-outline.svg';
     });
 
-    grid.appendChild(E('div', { 'class': 'ip-card full-width' }, [
-      E('div', { 'class': 'ip-line' }, [ipVal, eye]),
-      E('div', { 'class': 'ip-org' }, org),
-      E('div', { 'class': 'bubble yellow' })
+    grid.appendChild(E('div', { class: 'ip-card full-width', style: 'box-shadow: none; border: 1px solid #999;' }, [
+      E('div', { class: 'ip-line' }, [ipVal, eye]),
+      E('div', { class: 'ip-org' }, org),
+      E('div', { class: 'bubble yellow' })
     ]));
 
-    L.Poll.add(function () {
-      return fs.read_direct('/proc/net/dev').then(function(raw) {
-        var updated = parseStats(raw);
+    L.Poll.add(() => {
+      return fs.read_direct('/proc/net/dev').then(raw => {
+        const updated = parseStats(raw);
         return this.render({ netStats: updated, ipData: data.ipData });
-      }.bind(this));
-    }.bind(this), 1000);
+      });
+    }, 1000);
 
     return E('div', {}, [grid]);
   }
