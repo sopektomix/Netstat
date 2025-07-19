@@ -48,7 +48,7 @@ function parseStats(raw) {
   lines.forEach(function(line) {
     var parts = line.trim().split(':');
     if (parts.length < 2) return;
-    var iface = parts[0].trim().replace(/_\d+$/, ''); 
+    var iface = parts[0].trim().replace(/_\d+$/, '');
     var values = parts[1].trim().split(/\s+/);
     stats[iface] = {
       rx: parseInt(values[0]) || 0,
@@ -60,13 +60,12 @@ function parseStats(raw) {
 
 function getBestWAN(stats) {
   const blacklist = ['lo', 'br-lan', 'lan'];
-  const blacklistPatterns = [/^phy/, /^wlan/, /^ra/, /^vpn/, /^wg/, /^tun/, /^wl/, /^apcli/, /^sta/, /^eth\d+_\d+$/];
+  const blacklistPatterns = [/^phy/, /^wlan/, /^ra/, /^lan$/, /^lan[1-4]$/, /^vpn/, /^wg/, /^tun/, /^wl/, /^apcli/, /^sta/, /^eth\d+_\d+$/];
 
   let max = 0, selected = null;
 
   for (let iface in stats) {
     if (blacklist.includes(iface)) continue;
-
     if (blacklistPatterns.some(rx => rx.test(iface))) continue;
 
     const total = stats[iface].rx + stats[iface].tx;
@@ -77,7 +76,6 @@ function getBestWAN(stats) {
   }
   return selected;
 }
-
 
 function formatRate(bits) {
   var units = ['Bps', 'Kbps', 'Mbps', 'Gbps'];
@@ -142,26 +140,32 @@ return baseclass.extend({
     var rxTotal = formatSize(curr.rx);
     var txTotal = formatSize(curr.tx);
 
+    const colors = ['#4CAF50', '#2196F3', '#FF9800', '#9C27B0'];
+
     var stats = [
       {
         label: _('Download'),
         valueNum: rxRate.number,
-        valueUnit: rxRate.unit
+        valueUnit: rxRate.unit,
+        color: colors[0]
       },
       {
         label: _('Upload'),
         valueNum: txRate.number,
-        valueUnit: txRate.unit
+        valueUnit: txRate.unit,
+        color: colors[1]
       },
       {
         label: _('Total RX'),
         valueNum: rxTotal.number,
-        valueUnit: rxTotal.unit
+        valueUnit: rxTotal.unit,
+        color: colors[2]
       },
       {
         label: _('Total TX'),
         valueNum: txTotal.number,
-        valueUnit: txTotal.unit
+        valueUnit: txTotal.unit,
+        color: colors[3]
       }
     ];
 
@@ -174,7 +178,11 @@ return baseclass.extend({
           E('span', { 'class': 'stat-number' }, stat.valueNum),
           E('br'),
           E('span', { 'class': 'stat-unit' }, stat.valueUnit)
-        ])
+        ]),
+        E('span', {
+          'class': 'iface-badge',
+          'style': `margin-top: 6px; display: inline-block; padding: 2px 6px; font-size: 10px; border-radius: 4px; background-color: ${stat.color}; color: white;`
+        }, iface)
       ]));
     });
 
