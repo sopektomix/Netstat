@@ -18,5 +18,5 @@ A lightweight, modern, and responsive LuCI status module for OpenWRT — designe
 ![Dashboard](./screenshot1.png)
 
 ### Interface Config
-![Interface](./screenshot2.png)
+![Interface](./Screenshot_20250720_115746_Firefox.jpg)
 
