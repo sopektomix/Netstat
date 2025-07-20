@@ -14,6 +14,7 @@ on:
       custom_name:
         description: 'File Name (without .ipk)'
         required: false
+        default: 'luci-app-netstats-v1.1-r5'
 
 permissions:
   contents: write  # required for tagging and release
