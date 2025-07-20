@@ -51,15 +51,25 @@ function parseStats(raw) {
   return stats;
 }
 
-function getBestWAN(stats) {
+function getPreferredInterfaces() {
+  return fs.exec('/sbin/uci', ['get', 'netstats.@config[0].prefer'])
+    .then(res => res.stdout.trim().split(/\s+/))
+    .catch(() => []);
+}
+
+function getBestWAN(stats, preferred) {
+  for (const iface of preferred) {
+    if (stats[iface]) return iface;
+  }
+
   if (stats['wwan0']) return 'wwan0';
 
   for (const iface in stats) {
     if (/^wwan/.test(iface)) return iface;
   }
 
-  const prefer = ['pppoe-wan', 'lte0', 'usb0', 'eth1', 'wan', 'tun0', 'wg0', 'utun0'];
-  for (const name of prefer) {
+  const fallback = ['pppoe-wan', 'lte0', 'usb0', 'eth1', 'wan', 'tun0', 'wg0', 'utun0'];
+  for (const name of fallback) {
     if (stats[name]) return name;
   }
 
@@ -92,15 +102,16 @@ return baseclass.extend({
   load: function () {
     return Promise.all([
       fs.read_direct('/proc/net/dev').then(parseStats).catch(() => ({})),
-      getPublicIP()
-    ]).then(([netStats, ipData]) => ({ netStats, ipData }));
+      getPublicIP(),
+      getPreferredInterfaces()
+    ]).then(([netStats, ipData, preferred]) => ({ netStats, ipData, preferred }));
   },
 
   render: function (data) {
     const now = Date.now();
     const dt = (now - last_time) / 1000;
 
-    const iface = getBestWAN(data.netStats);
+    const iface = getBestWAN(data.netStats, data.preferred);
     const curr = data.netStats[iface] || { rx: 0, tx: 0 };
     const prevStat = prev[iface] || curr;
 
@@ -128,7 +139,7 @@ return baseclass.extend({
     const grid = E('div', { class: 'stats-grid' });
 
     stats.forEach(stat => {
-      grid.appendChild(E('div', { class: 'stats-card', style: 'box-shadow: none; border: 1px solid #999;' }, [
+      grid.appendChild(E('div', { class: 'stats-card', style: 'box-shadow: none;' }, [
         E('div', { class: 'stat-label' }, stat.label),
         E('div', { class: 'stat-value' }, [
           E('span', { class: 'stat-number' }, stat.valueNum),
@@ -156,7 +167,7 @@ return baseclass.extend({
       eye.src = ipVisible ? '/luci-static/resources/netstat/eye-outline.svg' : '/luci-static/resources/netstat/eye-off-outline.svg';
     });
 
-    grid.appendChild(E('div', { class: 'ip-card full-width', style: 'box-shadow: none; border: 1px solid #999;' }, [
+    grid.appendChild(E('div', { class: 'ip-card full-width', style: 'box-shadow: none;' }, [
       E('div', { class: 'ip-line' }, [ipVal, eye]),
       E('div', { class: 'ip-org' }, org),
       E('div', { class: 'bubble yellow' })
@@ -165,7 +176,7 @@ return baseclass.extend({
     L.Poll.add(() => {
       return fs.read_direct('/proc/net/dev').then(raw => {
         const updated = parseStats(raw);
-        return this.render({ netStats: updated, ipData: data.ipData });
+        return this.render({ netStats: updated, ipData: data.ipData, preferred: data.preferred });
       });
     }, 1000);
 
