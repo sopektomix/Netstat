@@ -1,0 +1,4 @@
+
+config config
+	option prefer 'wwan0_1'
+
