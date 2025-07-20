@@ -41,7 +41,7 @@ function parseStats(raw) {
   lines.forEach(line => {
     const parts = line.trim().split(':');
     if (parts.length < 2) return;
-    const iface = parts[0].trim().replace(/_\d+$/, '');
+    const iface = parts[0].trim();
     const values = parts[1].trim().split(/\s+/);
     stats[iface] = {
       rx: parseInt(values[0]) || 0,
@@ -62,18 +62,21 @@ function getBestWAN(stats, preferred) {
     if (stats[iface]) return iface;
   }
 
-  if (stats['wwan0']) return 'wwan0';
-
-  for (const iface in stats) {
-    if (/^wwan/.test(iface)) return iface;
-  }
+  const modemMatch = Object.keys(stats).find(iface =>
+    /^(wwan|wwp|usb|rmnet|cdc|qmi|ppp|lte|modem|mobile|cell|tty)/i.test(iface)
+  );
+  if (modemMatch) return modemMatch;
 
   const fallback = ['pppoe-wan', 'lte0', 'usb0', 'eth1', 'wan', 'tun0', 'wg0', 'utun0'];
   for (const name of fallback) {
     if (stats[name]) return name;
   }
 
-  return Object.keys(stats)[0] || 'lo';
+  const keys = Object.keys(stats);
+  if (keys.length === 1 && keys[0] === 'lo') return 'wwan0_1';
+
+  const nonLo = keys.filter(k => k !== 'lo');
+  return nonLo[0] || 'wwan0_1';
 }
 
 function formatRate(bits) {
@@ -111,8 +114,14 @@ return baseclass.extend({
     const now = Date.now();
     const dt = (now - last_time) / 1000;
 
-    const iface = getBestWAN(data.netStats, data.preferred);
-    const curr = data.netStats[iface] || { rx: 0, tx: 0 };
+    const blacklist = ['lo', 'br-lan', 'docker0'];
+    const filteredStats = Object.fromEntries(
+      Object.entries(data.netStats).filter(([k]) => !blacklist.includes(k))
+    );
+
+    const iface = getBestWAN(filteredStats, data.preferred);
+
+    const curr = filteredStats[iface] || { rx: 0, tx: 0 };
     const prevStat = prev[iface] || curr;
 
     const rxSpeed = (curr.rx - prevStat.rx) / dt;
