@@ -5,6 +5,8 @@
 let prev = {};
 let last_time = Date.now();
 let ipVisible = localStorage.getItem('ipVisible') !== 'false';
+let totalRxReset = 0;
+let totalTxReset = 0;
 
 (function loadDynamicCSS() {
   function isDarkMode() {
@@ -102,7 +104,7 @@ function formatSize(bytes) {
 return baseclass.extend({
   title: '',
 
-  load: function () {
+  load: function() {
     return Promise.all([
       fs.read_direct('/proc/net/dev').then(parseStats).catch(() => ({})),
       getPublicIP(),
@@ -110,7 +112,7 @@ return baseclass.extend({
     ]).then(([netStats, ipData, preferred]) => ({ netStats, ipData, preferred }));
   },
 
-  render: function (data) {
+  render: function(data) {
     const now = Date.now();
     const dt = (now - last_time) / 1000;
 
@@ -132,8 +134,8 @@ return baseclass.extend({
 
     const rxRate = formatRate(rxSpeed * 8);
     const txRate = formatRate(txSpeed * 8);
-    const rxTotal = formatSize(curr.rx);
-    const txTotal = formatSize(curr.tx);
+    const rxTotal = formatSize(curr.rx - totalRxReset);
+    const txTotal = formatSize(curr.tx - totalTxReset);
 
     const org = data.ipData?.network?.autonomous_system?.name?.replace(/^AS\d+\s*/, '') || 'Unknown';
     const ip = data.ipData?.ip || 'Unavailable';
@@ -141,14 +143,26 @@ return baseclass.extend({
     const stats = [
       { label: _('Download'), valueNum: rxRate.number, valueUnit: rxRate.unit, color: '#4CAF50' },
       { label: _('Upload'), valueNum: txRate.number, valueUnit: txRate.unit, color: '#2196F3' },
-      { label: _('Total RX'), valueNum: rxTotal.number, valueUnit: rxTotal.unit, color: '#FF9800' },
-      { label: _('Total TX'), valueNum: txTotal.number, valueUnit: txTotal.unit, color: '#9C27B0' }
+      { 
+        label: _('Total Download'), 
+        valueNum: rxTotal.number, 
+        valueUnit: rxTotal.unit, 
+        color: '#FF9800',
+        reset: () => { totalRxReset = curr.rx; }
+      },
+      { 
+        label: _('Total Upload'), 
+        valueNum: txTotal.number, 
+        valueUnit: txTotal.unit, 
+        color: '#9C27B0',
+        reset: () => { totalTxReset = curr.tx; }
+      }
     ];
 
     const grid = E('div', { class: 'stats-grid' });
 
     stats.forEach(stat => {
-      grid.appendChild(E('div', { class: 'stats-card', style: 'box-shadow: none;' }, [
+      const card = E('div', { class: 'stats-card', style: 'box-shadow: none;' }, [
         E('div', { class: 'stat-label' }, stat.label),
         E('div', { class: 'stat-value' }, [
           E('span', { class: 'stat-number' }, stat.valueNum),
@@ -159,7 +173,18 @@ return baseclass.extend({
           class: 'iface-badge',
           style: `margin-top: 6px; display: inline-block; padding: 2px 6px; font-size: 10px; border-radius: 4px; background-color: ${stat.color}; color: white;`
         }, iface)
-      ]));
+      ]);
+
+      if (stat.reset) {
+        const resetBtn = E('button', {
+          class: 'btn cbi-button cbi-button-reset',
+          style: 'margin-top: 5px; padding: 2px 6px; font-size: 10px;',
+          click: stat.reset
+        }, _('Reset'));
+        card.appendChild(resetBtn);
+      }
+
+      grid.appendChild(card);
     });
 
     const ipVal = E('div', { class: 'ip-value', id: 'ip-value' }, ipVisible ? ip : '**********');
@@ -169,7 +194,7 @@ return baseclass.extend({
       title: _('Show/Hide IP')
     });
 
-    eye.addEventListener('click', function () {
+    eye.addEventListener('click', function() {
       ipVisible = !ipVisible;
       localStorage.setItem('ipVisible', ipVisible);
       ipVal.textContent = ipVisible ? ip : '**********';
