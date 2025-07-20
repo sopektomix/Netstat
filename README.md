@@ -12,3 +12,11 @@ A lightweight, modern, and responsive LuCI status module for OpenWRT — designe
 - Animated UI elements and toggles
  
 
+## 📸 Screenshots
+
+### Dashboard View
+![Dashboard](./screenshot1.png)
+
+### Interface Details
+![Interface](./screenshot2.png)
+
