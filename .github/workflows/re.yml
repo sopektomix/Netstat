@@ -121,7 +121,7 @@ jobs:
     - name: Upload to GitHub Release
       uses: softprops/action-gh-release@v1
       with:
-        tag_name: Compile luci-app-netstat
+        tag_name: netstat-$(date +'%Y%m%d')
         name: Compile luci-app-netstat
         files: firmware/*.ipk
       env:
