@@ -14,7 +14,10 @@ on:
       custom_name:
         description: 'File Name (without .ipk)'
         required: false
-
+        
+permissions:
+  contents: write
+  
 jobs:
   build:
     runs-on: ubuntu-22.04
